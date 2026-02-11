@@ -43,9 +43,6 @@ max_workers = 4
 **说明：**
 - `api_key`：API 密钥，必填
 - `max_workers`：最大并发工作线程数（建议 2-8）
-- API 服务地址已固定为 `https://llm.ai-nebula.com/v1`，无需配置
-
-或者在节点中直接输入 API Key。
 
 ## 节点说明
 
@@ -307,3 +304,4 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 - [Nebula API](https://ai-nebula.com)
+
