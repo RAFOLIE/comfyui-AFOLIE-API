@@ -42,14 +42,22 @@ class VideoModel(Enum):
 class VideoClient:
     """Nebula 视频生成 API 客户端"""
 
+    # HTTP 状态码说明
+    _STATUS_CODE_MESSAGES = {
+        200: "请求成功",
+        401: "API Key 无效或已过期",
+        429: "请求频率过高",
+        500: "服务器内部错误",
+    }
+
     def __init__(
         self,
-        api_base_url: str = "https://llm.ai-nebula.com",
+        api_base_url: str = "https://llm.ai-nebula.com/v1",
         api_key: str = "",
         interrupt_checker=None
     ):
-        # 确保 URL 以 / 结尾，但不要包含 /v1
-        self.api_base_url = api_base_url.rstrip('/').rstrip('/v1')
+        # 确保 URL 格式正确
+        self.api_base_url = api_base_url.rstrip('/')
         self.api_key = api_key
         self.interrupt_checker = interrupt_checker
 
@@ -60,6 +68,42 @@ class VideoClient:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
         }
+
+    def _extract_error_text(self, response: requests.Response, max_length: int = 500) -> str:
+        """从响应中提取错误信息"""
+        try:
+            if not response:
+                return "无响应"
+            
+            # 尝试解析 JSON 响应
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "application/json" in content_type:
+                try:
+                    json_data = response.json()
+                    # 尝试常见的错误字段
+                    for field in ["error", "message", "detail", "error_description", "error_msg"]:
+                        if field in json_data:
+                            error_value = json_data[field]
+                            if isinstance(error_value, str):
+                                return error_value[:max_length]
+                            elif isinstance(error_value, dict):
+                                # 嵌套的错误对象
+                                if "message" in error_value:
+                                    return error_value["message"][:max_length]
+                    # 如果都没有，返回整个 JSON 的字符串表示
+                    return str(json_data)[:max_length]
+                except Exception:
+                    pass
+            
+            # 如果不是 JSON 或解析失败，返回文本
+            text = response.text.strip()
+            if text:
+                return text[:max_length]
+            
+            # 如果都没有，返回状态码
+            return f"HTTP {response.status_code}"
+        except Exception:
+            return f"HTTP {response.status_code}"
 
     def _ensure_not_interrupted(self):
         """检查是否被中断"""
@@ -211,8 +255,31 @@ class VideoClient:
             if resp is None:
                 raise RuntimeError("请求被中断")
 
-            resp.raise_for_status()
-            return resp.json()
+            # 检查响应状态码
+            status_code = resp.status_code
+            
+            # 200 成功
+            if status_code == 200:
+                return resp.json()
+            
+            # 401 API Key 错误
+            elif status_code == 401:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"API Key 无效或已过期\n服务器返回：{error_text}")
+            
+            # 429 请求频率过高
+            elif status_code == 429:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"请求频率过高\n服务器返回：{error_text}")
+            
+            # 500 服务器内部错误
+            elif status_code == 500:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"服务器内部错误\n服务器返回：{error_text}")
+            
+            # 其他错误状态码
+            else:
+                raise RuntimeError(f"HTTP {status_code}\n服务器返回：{self._extract_error_text(resp)}")
 
         except requests.HTTPError as e:
             error_msg = f"HTTP 错误: {e.response.status_code}"
@@ -294,8 +361,31 @@ class VideoClient:
             if resp is None:
                 raise RuntimeError("请求被中断")
 
-            resp.raise_for_status()
-            return resp.json()
+            # 检查响应状态码
+            status_code = resp.status_code
+            
+            # 200 成功
+            if status_code == 200:
+                return resp.json()
+            
+            # 401 API Key 错误
+            elif status_code == 401:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"API Key 无效或已过期\n服务器返回：{error_text}")
+            
+            # 429 请求频率过高
+            elif status_code == 429:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"请求频率过高\n服务器返回：{error_text}")
+            
+            # 500 服务器内部错误
+            elif status_code == 500:
+                error_text = self._extract_error_text(resp)
+                raise RuntimeError(f"服务器内部错误\n服务器返回：{error_text}")
+            
+            # 其他错误状态码
+            else:
+                raise RuntimeError(f"HTTP {status_code}\n服务器返回：{self._extract_error_text(resp)}")
 
         except requests.HTTPError as e:
             error_msg = f"查询失败: {e.response.status_code}"

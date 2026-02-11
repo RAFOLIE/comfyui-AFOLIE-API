@@ -238,7 +238,7 @@ class VideoGenerationNode:
         """获取 API Base URL"""
         if self.config_manager:
             return self.config_manager.get_effective_api_base_url()
-        return "https://llm.ai-nebula.com"
+        return "https://llm.ai-nebula.com/v1"
 
     def _build_doubao_metadata(
         self,
@@ -586,7 +586,7 @@ class VideoQueryNode:
         """获取 API Base URL"""
         if self.config_manager:
             return self.config_manager.get_effective_api_base_url()
-        return "https://llm.ai-nebula.com"
+        return "https://llm.ai-nebula.com/v1"
 
     def query(
         self,

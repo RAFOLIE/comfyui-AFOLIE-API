@@ -37,9 +37,13 @@ git clone https://github.com/your-repo/comfyui-AFOLIE-API.git
 ```ini
 [nebula]
 api_key = sk-your-api-key-here
-api_base_url = https://llm.ai-nebula.com/v1
 max_workers = 4
 ```
+
+**说明：**
+- `api_key`：API 密钥，必填
+- `max_workers`：最大并发工作线程数（建议 2-8）
+- API 服务地址已固定为 `https://llm.ai-nebula.com/v1`，无需配置
 
 或者在节点中直接输入 API Key。
 
@@ -96,6 +100,32 @@ GPT Image 系列模型专用节点。
 - `提示词扩展`：自动扩展简短提示词
 - `水印`：是否添加水印
 
+### 🎬 AFOLIE 视频生成
+
+视频生成节点，支持多种模型。
+
+**支持模型：**
+- Sora 2
+- Veo 3.0/3.1
+- 阿里万相 Wan 2.5
+- 豆包 Seedance 1.0
+
+**功能：**
+- 文生视频
+- 图生视频
+- 支持首帧和尾帧参考
+- 可选择仅提交或等待完成
+- 支持轮询查询任务状态
+- 自动下载生成的视频
+
+### 🔍 AFOLIE 查询视频任务
+
+查询视频生成任务的状态和结果。
+
+**输入参数：**
+- `task_id`：任务 ID（以 video_ 开头）
+- `api_key`：API 密钥
+
 ### 🎨 AFOLIE 高级图像生成
 
 功能最全面的高级图像生成节点，支持双协议和批量生成。
@@ -129,7 +159,9 @@ GPT Image 系列模型专用节点。
 
 ## 支持的模型
 
-### Gemini 系列
+### 图像生成模型
+
+#### Gemini 系列
 | 模型 | 说明 |
 |------|------|
 | gemini-2.5-flash-image | Nano Banana，支持文生图、图生图、多图融合 |
@@ -155,7 +187,7 @@ GPT Image 系列模型专用节点。
 | qwen-image-plus | 文生图，擅长中文文本渲染 |
 | qwen-image-edit-plus | 图片编辑 |
 
-### 其他模型
+#### OpenAI 协议模型
 | 模型 | 说明 |
 |------|------|
 | dalle-3 | OpenAI DALL-E 3 |
@@ -163,6 +195,32 @@ GPT Image 系列模型专用节点。
 | flux-pro | Flux 专业版 |
 | flux-dev | Flux 开发版 |
 | sdxl-turbo | Stable Diffusion XL Turbo |
+
+### 视频生成模型
+
+#### Sora 系列
+| 模型 | 说明 |
+|------|------|
+| sora-2 | Sora 2，支持文生视频和图生视频 |
+
+#### Veo 系列
+| 模型 | 说明 |
+|------|------|
+| veo-3.0-fast-generate-001 | Veo 3.0 Fast，快速生成 |
+| veo-3.1-fast-generate-preview | Veo 3.1 Fast，支持首尾帧 |
+
+#### 阿里万相系列
+| 模型 | 说明 |
+|------|------|
+| wan2.5-t2v-preview | Wan 2.5 文生视频 |
+| wan2.5-i2v-preview | Wan 2.5 图生视频 |
+
+#### 豆包 Seedance 系列
+| 模型 | 说明 |
+|------|------|
+| doubao-seedance-1-0-lite-t2v-250428 | Seedance 1.0 Lite 文生视频 |
+| doubao-seedance-1-0-lite-i2v-250428 | Seedance 1.0 Lite 图生视频 |
+| doubao-seedance-1-0-pro-250528 | Seedance 1.0 Pro，支持首尾帧 |
 
 ## 使用示例
 
@@ -207,6 +265,14 @@ A:
 
 ## 更新日志
 
+### v2.0.0
+- 新增 🎬 AFOLIE 视频生成节点
+- 新增 🔍 AFOLIE 查询视频任务节点
+- 支持 Sora 2、Veo、阿里万相、豆包 Seedance 等视频模型
+- API 服务地址固定为 `https://llm.ai-nebula.com/v1`
+- 优化 HTTP 状态码处理（仅支持 200、401、429、500）
+- 优化错误信息提取，支持 HTML 错误页面解析
+
 ### v1.1.0
 - 新增 🎨 AFOLIE 高级图像生成节点
 - 支持 Gemini 和 OpenAI 双协议
@@ -223,7 +289,19 @@ A:
 
 ## 许可证
 
-MIT License
+BSD 3-Clause License
+
+Copyright (c) 2025, AFOLIE
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## 致谢
 

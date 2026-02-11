@@ -42,7 +42,6 @@ class ConfigManager:
         default_workers = min(8, cpu_limit)
         config[self._CONFIG_SECTION] = {
             "api_key": self._DEFAULT_API_KEY,
-            "api_base_url": self._DEFAULT_API_BASE_URL,
             "max_workers": str(default_workers),
         }
         try:
@@ -84,21 +83,7 @@ class ConfigManager:
         return self._DEFAULT_API_KEY
 
     def get_effective_api_base_url(self) -> str:
-        """获取有效的 API Base URL"""
-        parser = configparser.ConfigParser()
-        if os.path.exists(self._config_path):
-            try:
-                parser.read(self._config_path, encoding="utf-8")
-                if parser.has_section(self._CONFIG_SECTION):
-                    url = parser.get(
-                        self._CONFIG_SECTION,
-                        "api_base_url",
-                        fallback=""
-                    ).strip()
-                    if url:
-                        return url
-            except Exception as exc:
-                logger.warning(f"读取 config 中的 api_base_url 失败: {exc}")
+        """获取有效的 API Base URL（固定值）"""
         return self._DEFAULT_API_BASE_URL
 
     def load_max_workers(self) -> int:

@@ -39,8 +39,16 @@ class NebulaApiClient:
     _DEFAULT_READ_TIMEOUT = 420.0
     _MAX_RETRIES = 2
     _BASE_BACKOFF = 2.0
-    _RETRYABLE_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+    _RETRYABLE_STATUS = {429, 500}
     _INSECURE_WARNING_SUPPRESSED = False
+    
+    # HTTP 状态码说明
+    _STATUS_CODE_MESSAGES = {
+        200: "请求成功",
+        401: "API Key 无效或已过期",
+        429: "请求频率过高",
+        500: "服务器内部错误",
+    }
 
     def __init__(self, config_manager, logger_instance=logger, interrupt_checker=None) -> None:
         self.config_manager = config_manager
@@ -207,6 +215,61 @@ class NebulaApiClient:
 
         return request_body
 
+    def _extract_error_text(self, response: requests.Response, max_length: int = 500) -> str:
+        """从响应中提取错误信息"""
+        try:
+            if not response:
+                return "无响应"
+            
+            # 尝试解析 JSON 响应
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "application/json" in content_type:
+                try:
+                    json_data = response.json()
+                    # 尝试常见的错误字段
+                    for field in ["error", "message", "detail", "error_description", "error_msg"]:
+                        if field in json_data:
+                            error_value = json_data[field]
+                            if isinstance(error_value, str):
+                                return error_value[:max_length]
+                            elif isinstance(error_value, dict):
+                                # 嵌套的错误对象
+                                if "message" in error_value:
+                                    return error_value["message"][:max_length]
+                    # 如果都没有，返回整个 JSON 的字符串表示
+                    return str(json_data)[:max_length]
+                except Exception:
+                    pass
+            
+            # 处理 HTML 响应（比如 500 错误返回的错误页面）
+            if "text/html" in content_type:
+                text = response.text
+                # 尝试提取 <title> 标签内容
+                title_match = re.search(r'<title[^>]*>(.*?)</title>', text, re.IGNORECASE | re.DOTALL)
+                if title_match:
+                    title = title_match.group(1).strip()
+                    # 清理 HTML 实体和多余空白
+                    title = re.sub(r'\s+', ' ', title)
+                    return title[:max_length]
+                # 尝试提取 <h1> 标签内容
+                h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', text, re.IGNORECASE | re.DOTALL)
+                if h1_match:
+                    h1 = h1_match.group(1).strip()
+                    h1 = re.sub(r'\s+', ' ', h1)
+                    return h1[:max_length]
+                # 返回 HTML 的前 200 个字符
+                return text[:200] + "..."
+            
+            # 如果不是 JSON 或 HTML，返回文本
+            text = response.text.strip()
+            if text:
+                return text[:max_length]
+            
+            # 如果都没有，返回状态码
+            return f"HTTP {response.status_code}"
+        except Exception:
+            return f"HTTP {response.status_code}"
+
     def send_request(
         self,
         api_key: str,
@@ -262,15 +325,44 @@ class NebulaApiClient:
                     verify_ssl,
                     bypass_proxy,
                 )
-                if (
-                    response.status_code in self._RETRYABLE_STATUS
-                    and attempt < effective_max_retries
-                ):
-                    raise requests.HTTPError(
-                        f"HTTP {response.status_code}", response=response
-                    )
-                response.raise_for_status()
-                return response.json()
+                # 检查响应状态码
+                status_code = response.status_code
+                
+                # 200 成功
+                if status_code == 200:
+                    return response.json()
+                
+                # 401 API Key 错误 - 不重试
+                elif status_code == 401:
+                    error_text = self._extract_error_text(response)
+                    raise RuntimeError(f"API Key 无效或已过期\n服务器返回：{error_text}")
+                
+                # 429 请求频率过高 - 重试
+                elif status_code == 429:
+                    if attempt < effective_max_retries:
+                        # 429 错误使用更长的等待时间
+                        retry_wait = min(attempt_delay * 2, 30)  # 最多等待30秒
+                        self.logger.warning(f"请求频率过高，{retry_wait:.1f}秒后重试 ({attempt}/{effective_max_retries})")
+                        time.sleep(retry_wait)
+                        attempt_delay *= 2  # 下次等待时间翻倍
+                    else:
+                        error_text = self._extract_error_text(response)
+                        raise RuntimeError(f"请求频率过高，已达到最大重试次数\n服务器返回：{error_text}")
+                
+                # 500 服务器内部错误 - 重试
+                elif status_code == 500:
+                    if attempt < effective_max_retries:
+                        error_text = self._extract_error_text(response)
+                        self.logger.warning(f"服务器内部错误（{error_text}），将重试 ({attempt}/{effective_max_retries})")
+                        time.sleep(attempt_delay)
+                        attempt_delay *= 1.5
+                    else:
+                        error_text = self._extract_error_text(response)
+                        raise RuntimeError(f"服务器内部错误，已达到最大重试次数\n服务器返回：{error_text}")
+                
+                # 其他错误状态码 - 不重试
+                else:
+                    raise RuntimeError(f"HTTP {status_code}\n服务器返回：{self._extract_error_text(response)}")
             except (requests.Timeout, requests.ConnectionError) as exc:
                 last_error = exc
                 if attempt < effective_max_retries:
@@ -281,16 +373,18 @@ class NebulaApiClient:
                 last_error = exc
                 status = exc.response.status_code if exc.response else None
                 if status in self._RETRYABLE_STATUS and attempt < effective_max_retries:
-                    self.logger.warning(f"HTTP {status}，将重试")
-                    time.sleep(attempt_delay)
-                    attempt_delay *= 1.5
+                    if status == 429:
+                        retry_wait = min(attempt_delay * 2, 30)
+                        self.logger.warning(f"HTTP {status}，{retry_wait:.1f}秒后重试")
+                        time.sleep(retry_wait)
+                        attempt_delay *= 2
+                    elif status == 500:
+                        self.logger.warning(f"HTTP {status}，将重试")
+                        time.sleep(attempt_delay)
+                        attempt_delay *= 1.5
                 else:
-                    error_text = ""
-                    try:
-                        error_text = exc.response.text[:500] if exc.response else ""
-                    except Exception:
-                        pass
-                    raise RuntimeError(f"远端返回异常（HTTP {status}）：{error_text}")
+                    error_text = self._extract_error_text(exc.response) if exc.response else ""
+                    raise RuntimeError(f"HTTP {status}\n服务器返回：{error_text}")
             except requests.RequestException as exc:
                 last_error = exc
                 raise RuntimeError(f"HTTP 请求失败，请检查网络连接")
