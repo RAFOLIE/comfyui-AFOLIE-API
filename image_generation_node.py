@@ -476,6 +476,7 @@ class ImageGenerationNode:
 
     # 可用模型列表（仅 NebulaAI API 实际支持的模型）
     MODELS = [
+        "gemini-3.1-flash-image-preview",
         "gemini-3-pro-image-preview",
         "gemini-2.5-flash-image",
     ]
@@ -501,7 +502,7 @@ class ImageGenerationNode:
                     "tooltip": "API 密钥（可选，可用 config.ini 配置）"
                 }),
                 "model_type": (cls.MODELS, {
-                    "default": "gemini-3-pro-image-preview",
+                    "default": "gemini-3.1-flash-image-preview",
                     "tooltip": "模型名称"
                 }),
                 "batch_size": ("INT", {
@@ -644,7 +645,7 @@ class ImageGenerationNode:
         prompt: str,
         api_key: str = "",
         api_base_url: str = "",
-        model_type: str = "gemini-2.5-flash-image",
+        model_type: str = "gemini-3.1-flash-image-preview",
         batch_size: int = 1,
         aspect_ratio: str = "Auto",
         seed: int = -1,
