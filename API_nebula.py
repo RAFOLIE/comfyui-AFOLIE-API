@@ -42,6 +42,7 @@ API_CLIENT = NebulaApiClient(
 
 # 模型列表
 GEMINI_MODELS = [
+    "gemini-3.1-flash-image-preview",
     "gemini-3-pro-image-preview",
     "gemini-2.5-flash-image",
 ]
