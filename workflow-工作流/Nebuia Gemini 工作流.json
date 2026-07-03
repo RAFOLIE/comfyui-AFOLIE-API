@@ -1,0 +1,59 @@
+{
+  "22": {
+    "inputs": {
+      "prompt": "A beautiful sunset over ocean, high quality, detailed",
+      "api_key": "",
+      "model_type": "gemini-3.1-flash-image-preview",
+      "batch_size": 1,
+      "aspect_ratio": "Auto",
+      "seed": 793935138,
+      "top_p": 0.95,
+      "imageSize": "1K",
+      "超时秒数": 1200,
+      "绕过代理": false,
+      "api_protocol": "Gemini",
+      "image_1": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "AFOLIE_AdvancedImageGeneration",
+    "_meta": {
+      "title": "🎨 AFOLIE 高级图像生成"
+    }
+  },
+  "25": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "27": {
+    "inputs": {
+      "text": [
+        "22",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "29": {
+    "inputs": {
+      "image": "00001.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  }
+}

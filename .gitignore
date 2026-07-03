@@ -1,0 +1,17 @@
+# API 密钥配置（防止误推真实密钥）
+config.ini
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE / 工具元数据
+.workbuddy/
+.vscode/
+.idea/
+
+# 系统/临时文件
+.DS_Store
+Thumbs.db
+nul

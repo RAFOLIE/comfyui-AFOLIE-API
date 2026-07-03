@@ -42,7 +42,6 @@ API_CLIENT = NebulaApiClient(
 
 # 模型列表
 GEMINI_MODELS = [
-    "gemini-3.1-flash-image-preview",
     "gemini-3-pro-image-preview",
     "gemini-2.5-flash-image",
 ]
@@ -55,8 +54,9 @@ DOUBAO_MODELS = [
 ]
 
 GPT_MODELS = [
+    "gpt-image-2",
+    "gpt-image-1.5",
     "gpt-image-1",
-    "gpt-image-1-mini",
 ]
 
 QWEN_MODELS = [
@@ -109,7 +109,7 @@ class NebulaImageGenerator:
                     "multiline": False,
                     "tooltip": "图片尺寸，如 1024x1024、16:9、2048x2048 等"
                 }),
-                "图片质量": (["auto", "low", "medium", "high", "hd", "1K", "2K", "4K"], {
+                "图片质量": (["auto", "low", "medium", "high", "hd", "1K", "2K", "3K"], {
                     "default": "high",
                     "tooltip": "图片质量设置"
                 }),
@@ -421,9 +421,9 @@ class NebulaGeminiNode:
                     "default": "Auto",
                     "tooltip": "Auto 会自动匹配参考图像的相近宽高比"
                 }),
-                "图片尺寸": (["1K", "2K", "4K"], {
+                "图片尺寸": (["1K", "2K", "3K"], {
                     "default": "2K",
-                    "tooltip": "输出图片分辨率：1K/2K/4K"
+                    "tooltip": "输出图片分辨率：1K/2K/3K"
                 }),
                 "生成数量": ("INT", {
                     "default": 1,
@@ -533,7 +533,7 @@ class NebulaGeminiNode:
                 n=生成数量,
                 response_format="b64_json",
                 input_images_b64=input_images_b64 if input_images_b64 else None,
-                image_size=图片尺寸,  # 使用 image_size 参数设置 1K/2K/4K
+                image_size=图片尺寸,  # 使用 image_size 参数设置 1K/2K/3K
             )
 
             response_data = API_CLIENT.send_request(
@@ -750,7 +750,7 @@ class NebulaGPTImageNode:
                     "default": "一只可爱的橙色小猫坐在花园里，阳光明媚，高质量摄影",
                 }),
                 "模型": (GPT_MODELS, {
-                    "default": "gpt-image-1",
+                    "default": "gpt-image-2",
                 }),
                 "API密钥": ("STRING", {
                     "default": "",
@@ -788,7 +788,7 @@ class NebulaGPTImageNode:
     def generate(
         self,
         提示词: str,
-        模型: str,
+        模型: str = "gpt-image-2",
         API密钥: str = "",
         图片尺寸: str = "1024x1024",
         图片质量: str = "high",
@@ -818,26 +818,46 @@ class NebulaGPTImageNode:
         if 参考图像 is not None:
             input_images_b64 = self.image_codec.prepare_input_images([参考图像])
 
-        extra_params = {"input_fidelity": 输入保真度}
-
         logger.header("🌌 GPT Image 图像生成")
         logger.info(f"模型: {模型}")
         logger.info(f"尺寸: {图片尺寸}")
         logger.info(f"质量: {图片质量}")
+        if input_images_b64:
+            logger.info(f"模式: 图生图（{len(input_images_b64)} 张参考图）")
+        else:
+            logger.info(f"模式: 文生图")
 
         try:
             self._ensure_not_interrupted()
 
-            request_data = API_CLIENT.create_request_data(
-                model=模型,
-                prompt=提示词,
-                size=图片尺寸,
-                quality=图片质量,
-                n=生成数量,
-                response_format="b64_json",
-                input_images_b64=input_images_b64 if input_images_b64 else None,
-                **extra_params
-            )
+            if input_images_b64:
+                # 图生图：GPT 系列使用扁平的 image(单图)/ images(数组) 字段
+                # （文档：图像生成.md:322, 337-340），不走 NebulaApiClient 的 contents 格式
+                request_data = {
+                    "model": 模型,
+                    "prompt": 提示词,
+                    "size": 图片尺寸,
+                    "quality": 图片质量,
+                    "n": 生成数量,
+                    "response_format": "b64_json",
+                    "input_fidelity": 输入保真度,
+                }
+                if len(input_images_b64) == 1:
+                    request_data["image"] = f"data:image/png;base64,{input_images_b64[0]}"
+                else:
+                    request_data["images"] = [
+                        f"data:image/png;base64,{b64}" for b64 in input_images_b64
+                    ]
+            else:
+                # 文生图：input_fidelity 仅图生图有效，文生图不传（文档：图像生成.md:459）
+                request_data = API_CLIENT.create_request_data(
+                    model=模型,
+                    prompt=提示词,
+                    size=图片尺寸,
+                    quality=图片质量,
+                    n=生成数量,
+                    response_format="b64_json",
+                )
 
             response_data = API_CLIENT.send_request(
                 resolved_api_key,

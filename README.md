@@ -6,7 +6,7 @@
 
 - ✅ 支持 **Gemini** 系列模型（gemini-2.5-flash-image、gemini-3-pro-image-preview）
 - ✅ 支持 **豆包 Seedream** 系列模型（3.0、4.0、4.5）
-- ✅ 支持 **GPT Image** 系列模型（gpt-image-1、gpt-image-1-mini）
+- ✅ 支持 **GPT Image** 系列模型（gpt-image-2、gpt-image-1.5、gpt-image-1）
 - ✅ 支持 **通义千问** 系列模型（qwen-image-plus、qwen-image-edit-plus）
 - ✅ 支持 **OpenAI 协议**（DALL-E、Flux 等）
 - ✅ 文生图、图生图、多图融合
@@ -43,6 +43,9 @@ max_workers = 4
 **说明：**
 - `api_key`：API 密钥，必填
 - `max_workers`：最大并发工作线程数（建议 2-8）
+- API 服务地址已固定为 `https://llm.ai-nebula.com/v1`，无需配置
+
+或者在节点中直接输入 API Key。
 
 ## 节点说明
 
@@ -67,7 +70,7 @@ max_workers = 4
 
 **特有参数：**
 - `宽高比`：1:1、16:9、9:16 等
-- `图片尺寸`：1K、2K、4K
+- `图片尺寸`：1K、2K、3K
 - 支持最多 3 张参考图像进行多图融合
 
 ### 🌌 Nebula 豆包 Seedream
@@ -138,7 +141,7 @@ GPT Image 系列模型专用节点。
 **可选参数：**
 - `seed`：随机种子（-1 为随机，固定值可复现）
 - `top_p`：采样参数（0.0-1.0），控制多样性
-- `imageSize`：分辨率（无/1K/2K/4K）
+- `imageSize`：分辨率（无/1K/2K/3K）
 - `image_1~9`：最多支持 9 张参考图像（图生图）
 - `超时秒数`：API 请求超时时间（0-1800秒）
 - `绕过代理`：梯子不稳定时开启
@@ -168,15 +171,16 @@ GPT Image 系列模型专用节点。
 | 模型 | 说明 |
 |------|------|
 | doubao-seedream-3-0-t2i-250415 | 3.0 文生图，支持引导系数 |
-| doubao-seedream-4-0-250828 | 4.0 版本，支持 2K/4K |
+| doubao-seedream-4-0-250828 | 4.0 版本，支持 2K/3K |
 | doubao-seedream-4-5-251128 | 4.5 版本，支持创意/精确模式 |
 | doubao-seededit-3-0-i2i-250628 | 图片编辑模型 |
 
 ### GPT Image 系列
 | 模型 | 说明 |
 |------|------|
-| gpt-image-1 | 高质量图像生成 |
-| gpt-image-1-mini | 快速生成，成本更低 |
+| gpt-image-2 | 最新旗舰，最高质量（默认） |
+| gpt-image-1.5 | 保真度提升 |
+| gpt-image-1 | OpenAI 官方图像生成 |
 
 ### 通义千问系列
 | 模型 | 说明 |
@@ -304,4 +308,3 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
 - [Nebula API](https://ai-nebula.com)
-
