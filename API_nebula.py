@@ -43,6 +43,7 @@ API_CLIENT = NebulaApiClient(
 # 模型列表
 GEMINI_MODELS = [
     "gemini-3-pro-image-preview",
+    "gemini-3.1-flash-image-preview",
     "gemini-2.5-flash-image",
 ]
 
@@ -421,9 +422,9 @@ class NebulaGeminiNode:
                     "default": "Auto",
                     "tooltip": "Auto 会自动匹配参考图像的相近宽高比"
                 }),
-                "图片尺寸": (["1K", "2K", "3K"], {
+                "图片尺寸": (["1K", "2K", "4K"], {
                     "default": "2K",
-                    "tooltip": "输出图片分辨率：1K/2K/3K"
+                    "tooltip": "输出图片分辨率：1K/2K/4K"
                 }),
                 "生成数量": ("INT", {
                     "default": 1,
@@ -525,16 +526,34 @@ class NebulaGeminiNode:
         try:
             self._ensure_not_interrupted()
 
-            # 构建请求数据，使用 image_size 参数设置分辨率
-            request_data = API_CLIENT.create_request_data(
-                model=模型,
-                prompt=提示词,
-                size=effective_aspect_ratio if effective_aspect_ratio != "Auto" else None,
-                n=生成数量,
-                response_format="b64_json",
-                input_images_b64=input_images_b64 if input_images_b64 else None,
-                image_size=图片尺寸,  # 使用 image_size 参数设置 1K/2K/3K
-            )
+            if input_images_b64:
+                # 图生图：参考图放扁平的 image(单图)/ images(数组) 字段，
+                # 不走 contents[].parts[] 格式（对方 demo 确认的标准用法）
+                request_data = {
+                    "model": 模型,
+                    "prompt": 提示词,
+                    "n": 生成数量,
+                    "response_format": "b64_json",
+                    "image_size": 图片尺寸,
+                }
+                if effective_aspect_ratio != "Auto":
+                    request_data["size"] = effective_aspect_ratio
+                if len(input_images_b64) == 1:
+                    request_data["image"] = f"data:image/png;base64,{input_images_b64[0]}"
+                else:
+                    request_data["images"] = [
+                        f"data:image/png;base64,{b64}" for b64 in input_images_b64
+                    ]
+            else:
+                # 文生图：无参考图
+                request_data = API_CLIENT.create_request_data(
+                    model=模型,
+                    prompt=提示词,
+                    size=effective_aspect_ratio if effective_aspect_ratio != "Auto" else None,
+                    n=生成数量,
+                    response_format="b64_json",
+                    image_size=图片尺寸,
+                )
 
             response_data = API_CLIENT.send_request(
                 resolved_api_key,
