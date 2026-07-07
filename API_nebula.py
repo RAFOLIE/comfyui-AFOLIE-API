@@ -410,7 +410,7 @@ class NebulaGeminiNode:
                     "default": "一只可爱的橙色小猫坐在花园里，阳光明媚，高质量摄影",
                 }),
                 "模型": (GEMINI_MODELS, {
-                    "default": "gemini-3-pro-image-preview",
+                    "default": "gemini-3.1-flash-image-preview",
                 }),
                 "API密钥": ("STRING", {
                     "default": "",
@@ -517,6 +517,201 @@ class NebulaGeminiNode:
         logger.info(f"模型: {模型}")
         logger.info(f"宽高比: {effective_aspect_ratio}")
         logger.info(f"图片尺寸: {图片尺寸}")
+        if input_tensors:
+            logger.info(f"参考图像: {len(input_tensors)} 张")
+
+        # 处理超时：0 表示无限等待
+        timeout_value = None if 超时秒数 == 0 else 超时秒数
+
+        try:
+            self._ensure_not_interrupted()
+
+            if input_images_b64:
+                # 图生图：参考图放扁平的 image(单图)/ images(数组) 字段，
+                # 不走 contents[].parts[] 格式（对方 demo 确认的标准用法）
+                request_data = {
+                    "model": 模型,
+                    "prompt": 提示词,
+                    "n": 生成数量,
+                    "response_format": "b64_json",
+                    "image_size": 图片尺寸,
+                }
+                if effective_aspect_ratio != "Auto":
+                    request_data["size"] = effective_aspect_ratio
+                if len(input_images_b64) == 1:
+                    request_data["image"] = f"data:image/png;base64,{input_images_b64[0]}"
+                else:
+                    request_data["images"] = [
+                        f"data:image/png;base64,{b64}" for b64 in input_images_b64
+                    ]
+            else:
+                # 文生图：无参考图
+                request_data = API_CLIENT.create_request_data(
+                    model=模型,
+                    prompt=提示词,
+                    size=effective_aspect_ratio if effective_aspect_ratio != "Auto" else None,
+                    n=生成数量,
+                    response_format="b64_json",
+                    image_size=图片尺寸,
+                )
+
+            response_data = API_CLIENT.send_request(
+                resolved_api_key,
+                request_data,
+                api_base_url,
+                timeout=(15, timeout_value),
+            )
+
+            base64_images, revised_prompt = API_CLIENT.extract_images(response_data)
+
+            if not base64_images:
+                error_tensor = self.error_canvas.build_error_tensor_from_text("生成失败", "未返回图片")
+                return (error_tensor, "未返回图片")
+
+            image_tensor = self.image_codec.base64_to_tensor_parallel(base64_images)
+
+            total_time = time.time() - start_time
+            info_text = f"✅ 生成 {len(base64_images)} 张图像 ({图片尺寸})，耗时 {total_time:.2f}s"
+
+            logger.success(info_text)
+            return (image_tensor, info_text)
+
+        except Exception as e:
+            error_msg = str(e)[:300]
+            logger.error(f"生成失败: {error_msg}")
+            error_tensor = self.error_canvas.build_error_tensor_from_text("生成失败", error_msg)
+            return (error_tensor, error_msg)
+
+
+class NebulaGeminiLiteNode:
+    """
+    Gemini Lite 图像生成节点
+    专门用于 gemini-3.1-flash-lite-image 模型（固定 1K 分辨率，支持不同比例画布）
+    其余功能与 NebulaGeminiNode 一致。
+    """
+
+    LITE_MODEL = "gemini-3.1-flash-lite-image"   # 模型固定
+    LITE_SIZE = "1K"                              # 尺寸固定（该模型仅支持 1K）
+
+    RETURN_TYPES = ("IMAGE", "STRING")
+    RETURN_NAMES = ("图像", "信息")
+    FUNCTION = "generate"
+    OUTPUT_NODE = True
+    CATEGORY = "AFOLIE/API/nebula图像节点"
+
+    def __init__(self):
+        self.config_manager = CONFIG_MANAGER
+        self.image_codec = ImageCodec(logger, self._ensure_not_interrupted)
+        self.error_canvas = ErrorCanvas(logger)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "提示词": ("STRING", {
+                    "multiline": True,
+                    "default": "一只可爱的橙色小猫坐在花园里，阳光明媚，高质量摄影",
+                }),
+                "API密钥": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                }),
+            },
+            "optional": {
+                "宽高比": (["Auto", "1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"], {
+                    "default": "Auto",
+                    "tooltip": "Auto 会自动匹配参考图像的相近宽高比"
+                }),
+                "生成数量": ("INT", {
+                    "default": 1,
+                    "min": 1,
+                    "max": 4,
+                }),
+                "超时秒数": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 1800,
+                    "tooltip": "API 请求超时时间（秒），0 表示无限等待"
+                }),
+                "参考图像1": ("IMAGE", {"tooltip": "参考图像 1"}),
+                "参考图像2": ("IMAGE", {"tooltip": "参考图像 2"}),
+                "参考图像3": ("IMAGE", {"tooltip": "参考图像 3"}),
+                "参考图像4": ("IMAGE", {"tooltip": "参考图像 4"}),
+                "参考图像5": ("IMAGE", {"tooltip": "参考图像 5"}),
+                "参考图像6": ("IMAGE", {"tooltip": "参考图像 6"}),
+                "参考图像7": ("IMAGE", {"tooltip": "参考图像 7"}),
+                "参考图像8": ("IMAGE", {"tooltip": "参考图像 8"}),
+                "参考图像9": ("IMAGE", {"tooltip": "参考图像 9"}),
+                "参考图像10": ("IMAGE", {"tooltip": "参考图像 10"}),
+                "参考图像11": ("IMAGE", {"tooltip": "参考图像 11"}),
+                "参考图像12": ("IMAGE", {"tooltip": "参考图像 12"}),
+                "参考图像13": ("IMAGE", {"tooltip": "参考图像 13"}),
+                "参考图像14": ("IMAGE", {"tooltip": "参考图像 14"}),
+            }
+        }
+
+    @staticmethod
+    def _ensure_not_interrupted():
+        comfy.model_management.throw_exception_if_processing_interrupted()
+
+    def generate(
+        self,
+        提示词: str,
+        API密钥: str = "",
+        宽高比: str = "Auto",
+        生成数量: int = 1,
+        超时秒数: int = 0,
+        **kwargs
+    ):
+        """生成 Gemini Lite 图像（固定 gemini-3.1-flash-lite-image / 1K）"""
+        模型 = self.LITE_MODEL
+        图片尺寸 = self.LITE_SIZE
+        start_time = time.time()
+
+        # 解析 API Key
+        raw_api_key = (API密钥 or "").strip()
+        resolved_api_key = self.config_manager.sanitize_api_key(raw_api_key)
+        if not resolved_api_key:
+            resolved_api_key = self.config_manager.sanitize_api_key(
+                self.config_manager.load_api_key()
+            )
+
+        if not resolved_api_key:
+            error_msg = "请配置 API Key"
+            error_tensor = self.error_canvas.build_error_tensor_from_text("配置缺失", error_msg)
+            return (error_tensor, error_msg)
+
+        api_base_url = self.config_manager.get_effective_api_base_url()
+
+        # 收集所有参考图像
+        input_tensors = []
+        for i in range(1, 15):
+            img = kwargs.get(f"参考图像{i}")
+            if img is not None:
+                input_tensors.append(img)
+
+        input_images_b64 = self.image_codec.prepare_input_images(input_tensors) if input_tensors else []
+
+        # 自动检测宽高比
+        effective_aspect_ratio = 宽高比
+        if 宽高比 == "Auto" and input_tensors:
+            # 从第一张参考图像获取宽高比
+            first_img = input_tensors[0]
+            if first_img is not None and len(first_img.shape) >= 3:
+                h, w = first_img.shape[1], first_img.shape[2]
+                ratio = w / h
+                # 匹配最接近的宽高比
+                aspect_ratios = {
+                    "1:1": 1.0, "3:2": 1.5, "2:3": 0.667, "3:4": 0.75, "4:3": 1.333,
+                    "4:5": 0.8, "5:4": 1.25, "9:16": 0.5625, "16:9": 1.778, "21:9": 2.333
+                }
+                closest = min(aspect_ratios.items(), key=lambda x: abs(x[1] - ratio))
+                effective_aspect_ratio = closest[0]
+                logger.info(f"自动检测宽高比: {effective_aspect_ratio} (原始比例: {ratio:.2f})")
+
+        logger.header("🌌 Gemini Lite 图像生成")
+        logger.info(f"模型: {模型} (固定 1K)")
+        logger.info(f"宽高比: {effective_aspect_ratio}")
         if input_tensors:
             logger.info(f"参考图像: {len(input_tensors)} 张")
 
@@ -1057,6 +1252,7 @@ class NebulaQwenImageNode:
 NODE_CLASS_MAPPINGS = {
     "AFOLIE_NebulaImageGenerator": NebulaImageGenerator,
     "AFOLIE_NebulaGemini": NebulaGeminiNode,
+    "AFOLIE_NebulaGeminiLite": NebulaGeminiLiteNode,
     "AFOLIE_NebulaDoubao": NebulaDoubaoNode,
     "AFOLIE_NebulaGPTImage": NebulaGPTImageNode,
     "AFOLIE_NebulaQwenImage": NebulaQwenImageNode,
@@ -1065,6 +1261,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "AFOLIE_NebulaImageGenerator": "🌌 Nebula 图像生成",
     "AFOLIE_NebulaGemini": "🌌 Nebula Gemini",
+    "AFOLIE_NebulaGeminiLite": "🌌 Nebula Gemini-lite",
     "AFOLIE_NebulaDoubao": "🌌 Nebula 豆包 Seedream",
     "AFOLIE_NebulaGPTImage": "🌌 Nebula GPT Image",
     "AFOLIE_NebulaQwenImage": "🌌 Nebula 通义千问",

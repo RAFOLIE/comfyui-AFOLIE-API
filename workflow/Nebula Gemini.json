@@ -1,0 +1,55 @@
+{
+  "56": {
+    "inputs": {
+      "image": "00001.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "57": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "59": {
+    "inputs": {
+      "value": [
+        "61",
+        1
+      ]
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Text String (Multiline)"
+    }
+  },
+  "61": {
+    "inputs": {
+      "提示词": "一只可爱的橙色小猫坐在花园里，阳光明媚，高质量摄影",
+      "模型": "gemini-3.1-flash-image-preview",
+      "API密钥": "",
+      "宽高比": "Auto",
+      "图片尺寸": "2K",
+      "生成数量": 1,
+      "超时秒数": 0,
+      "参考图像1": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "AFOLIE_NebulaGemini",
+    "_meta": {
+      "title": "🌌 Nebula Gemini"
+    }
+  }
+}
